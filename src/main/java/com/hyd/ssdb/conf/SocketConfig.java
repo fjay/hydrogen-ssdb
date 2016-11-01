@@ -10,7 +10,7 @@ public class SocketConfig {
     /**
      * 缺省 Socket 超时时间
      */
-    public static final int DEFAULT_SO_TIMEOUT = 1000;
+    public static final int DEFAULT_SO_TIMEOUT = 5000;
 
     /**
      * 缺省缓冲区大小

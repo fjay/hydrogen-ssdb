@@ -15,7 +15,7 @@ import java.util.List;
  * 这个类里面几个方法标上了 synchronized，考虑到：一个 Cluster 最多只会包含几台十几台服务器，
  * synchronized 方法执行速度会很快，而且服务器的变更不会很频繁，所以没有使用复杂的同步方式。
  * fillMasters() 方法没有加上 synchronized 是因为它在构造方法中执行，构造方法不会被多线程访问。
- *
+ * <p>
  * created at 15-12-3
  *
  * @author Yiding
@@ -176,11 +176,8 @@ public class Cluster {
                     "Unable to find master server in cluster '" + id + "'");
         }
 
-        if (masters.size() == 1) {
-            return masters.get(0);
-        }
-
-        return masters.get(RANDOM.nextInt(masters.size()));
+        // 防止同一个key同时写入不同的master造成脏数据，取固定位置的master
+        return masters.get(0);
     }
 
     /**

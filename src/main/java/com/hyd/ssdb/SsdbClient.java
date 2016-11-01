@@ -1,5 +1,6 @@
 package com.hyd.ssdb;
 
+import com.asiainfo.common.util.CollectionUtil;
 import com.hyd.ssdb.conf.Cluster;
 import com.hyd.ssdb.conf.Server;
 import com.hyd.ssdb.conf.Sharding;
@@ -108,6 +109,14 @@ public class SsdbClient extends AbstractClient {
 
     public byte[] getBytes(String key) {
         return sendRequest("get", key).getBytes();
+    }
+
+    public List<KeyValue> multiGet(String... keys) {
+        return sendRequest((Object[]) prependCommand("multi_get", keys)).getKeyValues();
+    }
+
+    public List<KeyValue> multiGet(List<String> keys) {
+        return multiGet(CollectionUtil.toArray(keys));
     }
 
     public void set(String key, Object value) {
@@ -378,8 +387,8 @@ public class SsdbClient extends AbstractClient {
             throw new SsdbException("Length of props must be odd");
         }
 
-        String[] command = prependCommand("multi_hset", key, props);
-        sendWriteRequest((Object[]) command);
+        Object[] command = prependCommand("multi_hset", key, props);
+        sendWriteRequest(command);
     }
 
     public void multiHset(String key, List<KeyValue> props) {
@@ -432,12 +441,12 @@ public class SsdbClient extends AbstractClient {
         return sendRequest("zkeys", key, startExclude, endInclude, limit).getBlocks();
     }
 
-    public List<IdScore> zscan(String key, String startExclude, String endInclude, int limit) {
-        return sendRequest("zscan", key, startExclude, endInclude, limit).getIdScores();
+    public List<IdScore> zscan(String key, String keyStart, Long scoreStartInclude, Long scoreEndInclude, int limit) {
+        return sendRequest("zscan", key, keyStart, scoreStartInclude, scoreEndInclude, limit).getIdScores();
     }
 
-    public List<IdScore> zrscan(String key, String startExclude, String endInclude, int limit) {
-        return sendRequest("zrscan", key, startExclude, endInclude, limit).getIdScores();
+    public List<IdScore> zrscan(String key, String keyStart, Long scoreStartInclude, Long scoreEndInclude, int limit) {
+        return sendRequest("zrscan", key, keyStart, scoreStartInclude, scoreEndInclude, limit).getIdScores();
     }
 
     /**
@@ -536,11 +545,19 @@ public class SsdbClient extends AbstractClient {
         return sendWriteRequest(prependCommand("qpush_front", key, values)).getIntResult();
     }
 
+    public int qpushFront(String key, byte[]... values) {
+        return sendWriteRequest(prependCommand("values", key, values)).getIntResult();
+    }
+
     public int qpushFront(String key, byte[] bytes) {
         return sendWriteRequest("qpush_front", key, bytes).getIntResult();
     }
 
     public int qpushBack(String key, String... values) {
+        return sendWriteRequest(prependCommand("qpush_back", key, values)).getIntResult();
+    }
+
+    public int qpushBack(String key, byte[]... values) {
         return sendWriteRequest(prependCommand("qpush_back", key, values)).getIntResult();
     }
 
