@@ -1,6 +1,5 @@
 package com.hyd.ssdb;
 
-import com.asiainfo.common.util.CollectionUtil;
 import com.hyd.ssdb.conf.Cluster;
 import com.hyd.ssdb.conf.Server;
 import com.hyd.ssdb.conf.Sharding;
@@ -112,11 +111,25 @@ public class SsdbClient extends AbstractClient {
     }
 
     public List<KeyValue> multiGet(String... keys) {
+        if (keys == null) {
+            throw new SsdbException("Cannot save null to SSDB");
+        }
+
         return sendRequest((Object[]) prependCommand("multi_get", keys)).getKeyValues();
     }
 
     public List<KeyValue> multiGet(List<String> keys) {
-        return multiGet(CollectionUtil.toArray(keys));
+        if (keys == null) {
+            throw new SsdbException("Cannot save null to SSDB");
+        }
+
+        String[] keysArray = new String[keys.size()];
+
+        for (int i = 0; i < keys.size(); i++) {
+            keysArray[i] = keys.get(i);
+        }
+
+        return multiGet(keysArray);
     }
 
     public void set(String key, Object value) {

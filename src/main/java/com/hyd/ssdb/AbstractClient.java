@@ -13,6 +13,7 @@ import com.hyd.ssdb.util.IdScore;
 import com.hyd.ssdb.util.KeyValue;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Map;
  * @author Yiding
  */
 @SuppressWarnings("WeakerAccess")
-public abstract class AbstractClient {
+public abstract class AbstractClient implements Closeable {
 
     static final org.slf4j.Logger LOG = LoggerFactory.getLogger(AbstractClient.class);
 
@@ -52,7 +53,6 @@ public abstract class AbstractClient {
      * 发送一整条命令，例如 "set key1 value1"
      *
      * @param command 一整条命令
-     *
      * @return 执行结果
      */
     public Response sendRequest(String command) {
@@ -63,7 +63,6 @@ public abstract class AbstractClient {
      * 发送包含写入操作的命令，每个参数为命令的一部分，例如 "set", "key1", "value1"
      *
      * @param tokens 命令中的各个部分
-     *
      * @return 执行结果
      */
     public Response sendWriteRequest(Object... tokens) {
@@ -74,7 +73,6 @@ public abstract class AbstractClient {
      * 发送命令，每个参数为命令的一部分，例如 "set", "key1", "value1"
      *
      * @param tokens 命令中的各个部分
-     *
      * @return 执行结果
      */
     public Response sendRequest(Object... tokens) {
@@ -85,7 +83,6 @@ public abstract class AbstractClient {
      * 发送一个命令
      *
      * @param request 命令对象
-     *
      * @return 执行结果
      */
     public Response sendRequest(Request request) {
@@ -166,7 +163,6 @@ public abstract class AbstractClient {
      *
      * @param token      要插入的内容
      * @param parameters 参数
-     *
      * @return 新生成的数组
      */
     protected String[] prependCommand(String token, String[] parameters) {
@@ -182,7 +178,6 @@ public abstract class AbstractClient {
      * @param token1     要插入的内容
      * @param token2     要插入的内容
      * @param parameters 参数
-     *
      * @return 新生成的数组
      */
     protected Object[] prependCommand(String token1, String token2, Object[] parameters) {
@@ -237,7 +232,6 @@ public abstract class AbstractClient {
      * 根据 Sharding 对 key 列表进行分组
      *
      * @param keys 要进行分组的 key 列表
-     *
      * @return 分组结果
      */
     protected List<String[]> splitKeys(String[] keys) {

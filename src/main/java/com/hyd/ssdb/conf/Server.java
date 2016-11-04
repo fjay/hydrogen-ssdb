@@ -2,6 +2,8 @@ package com.hyd.ssdb.conf;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
+import java.util.Date;
+
 /**
  * 对一台具体的 SSDB 服务器的配置，包括地址、端口、校验密码和其他性能配置。
  * created at 15-12-3
@@ -18,9 +20,13 @@ public class Server {
 
     private boolean master = true;  // 是否是主服务器。
 
+    private int refreshInterval = 30000;
+
     private GenericObjectPoolConfig poolConfig = createDefaultPoolConfig();     // 连接池配置参数
 
     private SocketConfig socketConfig = new SocketConfig();     // 网络配置参数
+
+    private Date lastUpdateTime;
 
     public Server() {
     }
@@ -146,6 +152,24 @@ public class Server {
 
     public void setPass(String pass) {
         this.pass = pass;
+    }
+
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
+
+    public Server setLastUpdateTime(Date lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
+        return this;
+    }
+
+    public int getRefreshInterval() {
+        return refreshInterval;
+    }
+
+    public Server setRefreshInterval(int refreshInterval) {
+        this.refreshInterval = refreshInterval;
+        return this;
     }
 
     @SuppressWarnings("SimplifiableIfStatement")

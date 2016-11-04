@@ -29,7 +29,7 @@ public class ConnectionPoolManager {
 
     private Sharding sharding;  // 负载均衡拓扑结构
 
-    private Map<Server, ConnectionPool> connectionPoolMap = new ConcurrentHashMap<Server, ConnectionPool>();
+    private Map<String, ConnectionPool> connectionPoolMap = new ConcurrentHashMap<String, ConnectionPool>();
 
     public ConnectionPoolManager(Sharding sharding) {
         this.sharding = sharding;
@@ -44,9 +44,8 @@ public class ConnectionPoolManager {
      * 根据 key 和操作类型获取一个连接。如果 Cluster 的某个服务器无法创建连接，则自动切换
      * 到其他可用的服务器；如果所有的服务器都不可用，则抛出 SsdbNoServerAvailableException
      *
-     * @param key          key
-     * @param write        是否是写入操作
-     *
+     * @param key   key
+     * @param write 是否是写入操作
      * @return 连接和连接池
      */
     public PoolAndConnection getConnection(String key, boolean write)
@@ -91,7 +90,6 @@ public class ConnectionPoolManager {
      *
      * @param cluster 集群配置
      * @param write   是否是写操作
-     *
      * @return 取到的服务器。如果取不到，则抛出异常
      */
     private ConnectionPool pickServer(Cluster cluster, boolean write) {
@@ -106,15 +104,16 @@ public class ConnectionPoolManager {
 
     @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     private ConnectionPool getConnectionPool(final Server server) {
+        String key = getConnectionPoolMapKey(server.getHost(), server.getPort());
         synchronized (server) {
-            if (connectionPoolMap.containsKey(server)) {
-                return connectionPoolMap.get(server);
+            if (connectionPoolMap.containsKey(key)) {
+                return connectionPoolMap.get(key);
             }
 
             ConnectionPool connectionPool = createConnectionPool(server);
             connectionPool.setTestOnReturn(true);
             connectionPool.setTestOnBorrow(true);
-            connectionPoolMap.put(server, connectionPool);
+            connectionPoolMap.put(key, connectionPool);
             return connectionPool;
         }
     }
@@ -124,9 +123,17 @@ public class ConnectionPoolManager {
     }
 
     /**
-     * 关闭所有连接池
+     * 关闭所有连接池以及集群服务器
      */
     public void close() {
+        for (Cluster cluster : sharding.getClusters()) {
+            try {
+                cluster.close();
+            } catch (Exception e) {
+                LOG.error("Error closing cluster", e);
+            }
+        }
+
         for (ConnectionPool pool : connectionPoolMap.values()) {
             try {
                 pool.close();
@@ -142,10 +149,18 @@ public class ConnectionPoolManager {
         reportInvalidConnection(host, port);
     }
 
-    public void reportInvalidConnection(String host, int port) {
+    public synchronized void reportInvalidConnection(String host, int port) {
         Server toInvalidate = new Server(host, port);
+        String key = getConnectionPoolMapKey(host, port);
+
         for (Cluster cluster : sharding.getClusters()) {
             cluster.markInvalid(toInvalidate);
         }
+
+        connectionPoolMap.remove(key);
+    }
+
+    private String getConnectionPoolMapKey(String host, int port) {
+        return host + ":" + port;
     }
 }

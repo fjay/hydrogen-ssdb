@@ -5,10 +5,9 @@ import com.hyd.ssdb.SsdbNoServerAvailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * 表示一个集群。集群是负载均衡的基本单位，一个集群里面可以配置一台或多台服务器（{@link Server}）。
@@ -20,7 +19,7 @@ import java.util.List;
  *
  * @author Yiding
  */
-public class Cluster {
+public class Cluster implements Closeable {
 
     public static final int DEFAULT_WEIGHT = 100;
 
@@ -30,27 +29,29 @@ public class Cluster {
 
     private String id = String.valueOf(hashCode());
 
-    private List<Server> servers;
-
-    ////////////////////////////////////////////////////////////////
-    private List<Server> masters = new ArrayList<Server>();
-
-    private List<Server> invalidServers = new ArrayList<Server>();
-
     private int weight = DEFAULT_WEIGHT;
 
-    public Cluster(List<Server> servers, int weight) {
+    private ActiveInvalidServersChecker activeInvalidServersChecker;
 
+    private List<Server> servers;
+    private List<Server> masters = new Vector<Server>();
+    private List<Server> invalidServers = new ArrayList<Server>();
+
+
+    public Cluster(List<Server> servers, int weight) {
         servers.removeAll(Collections.singleton((Server) null));
         if (servers.isEmpty()) {
             throw new SsdbClientException("servers is empty");
         }
 
-        this.servers = new ArrayList<Server>(servers);
+        this.servers = new Vector<Server>(servers);
         this.weight = weight;
         this.id = servers.get(0).getHost() + ":" + servers.get(0).getPort();
 
         fillMasters();
+
+        activeInvalidServersChecker = new ActiveInvalidServersChecker("active-invalid-servers-checker");
+        activeInvalidServersChecker.start();
     }
 
     public Cluster(Server server, int weight) {
@@ -214,7 +215,24 @@ public class Cluster {
         }
     }
 
-    // TODO 自动检查无效的服务器，当服务器恢复上线时做好相应处理
+    /**
+     * 激活无效的服务器，下次请求时尝试重连
+     */
+    public synchronized void activeInvalidServers() {
+        if (invalidServers.isEmpty()) {
+            return;
+        }
+
+        Date now = new Date();
+        for (Server server : new ArrayList<Server>(invalidServers)) {
+            if (now.getTime() - server.getLastUpdateTime().getTime() > server.getRefreshInterval()) {
+                LOG.debug(String.format("Try to active server(%s)", server));
+
+                addServer(server);
+                this.invalidServers.remove(server);
+            }
+        }
+    }
 
     @Override
     public String toString() {
@@ -222,5 +240,36 @@ public class Cluster {
                 "id='" + id + '\'' +
                 ", weight=" + weight +
                 '}';
+    }
+
+    @Override
+    public void close() {
+        activeInvalidServersChecker.close();
+    }
+
+    class ActiveInvalidServersChecker extends Thread implements Closeable {
+        private volatile boolean isClose = false;
+
+        public ActiveInvalidServersChecker(String name) {
+            super(name);
+        }
+
+        @Override
+        public void run() {
+            while (!isClose) {
+                try {
+                    Thread.sleep(1000);
+
+                    activeInvalidServers();
+                } catch (Throwable e) {
+                    LOG.error(String.format("activeInvalidServers error (clusterId=%s)", id), e);
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            isClose = true;
+        }
     }
 }
