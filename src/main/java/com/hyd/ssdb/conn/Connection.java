@@ -164,7 +164,7 @@ public class Connection {
                 }
             }
 
-            throw new SsdbException("Invalid packet");
+            throw new SsdbSocketFailedException("Invalid packet");
         } catch (SocketTimeoutException e) {
             this.available = false;
             throw new SsdbSocketFailedException("Socket timed out, already read: " +

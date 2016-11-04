@@ -207,6 +207,8 @@ public class Cluster implements Closeable {
     public synchronized void markInvalid(Server invalid) {
         LOG.error("Removing invalid server " + invalid);
 
+        invalid.setLastUpdateTime(new Date());
+
         this.servers.remove(invalid);
         this.masters.remove(invalid);
 

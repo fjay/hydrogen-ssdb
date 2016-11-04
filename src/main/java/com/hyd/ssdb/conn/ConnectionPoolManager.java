@@ -5,8 +5,10 @@ import com.hyd.ssdb.SsdbNoClusterAvailableException;
 import com.hyd.ssdb.SsdbNoServerAvailableException;
 import com.hyd.ssdb.SsdbSocketFailedException;
 import com.hyd.ssdb.conf.Cluster;
+import com.hyd.ssdb.conf.SPOFStrategy;
 import com.hyd.ssdb.conf.Server;
 import com.hyd.ssdb.conf.Sharding;
+import com.hyd.ssdb.sharding.ConsistentHashSharding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,8 +73,15 @@ public class ConnectionPoolManager {
             } catch (SsdbNoServerAvailableException e) {  // 遇到单点故障，尝试切换 Cluster
                 LOG.error("Connection failed: ", e);
                 sharding.reportInvalidCluster(cluster);
+
                 retry = true;
 
+                // 包括key策略，不再尝试切换Cluster
+                if (sharding instanceof ConsistentHashSharding) {
+                    if (((ConsistentHashSharding) sharding).getSpofStrategy() == SPOFStrategy.PreserveKeySpaceStrategy) {
+                        retry = false;
+                    }
+                }
             } catch (SsdbNoClusterAvailableException e) {  // 无法再继续尝试切换 Cluster
                 LOG.error("Connection failed: ", e);
                 throw e;
@@ -151,13 +160,10 @@ public class ConnectionPoolManager {
 
     public synchronized void reportInvalidConnection(String host, int port) {
         Server toInvalidate = new Server(host, port);
-        String key = getConnectionPoolMapKey(host, port);
 
         for (Cluster cluster : sharding.getClusters()) {
             cluster.markInvalid(toInvalidate);
         }
-
-        connectionPoolMap.remove(key);
     }
 
     private String getConnectionPoolMapKey(String host, int port) {

@@ -1,7 +1,9 @@
 package com.hyd.ssdb;
 
+import com.hyd.ssdb.conf.SPOFStrategy;
 import com.hyd.ssdb.protocol.Request;
 import com.hyd.ssdb.protocol.Response;
+import com.hyd.ssdb.sharding.ConsistentHashSharding;
 import com.hyd.ssdb.util.Bytes;
 import com.hyd.ssdb.util.IdScore;
 import com.hyd.ssdb.util.KeyValue;
@@ -23,7 +25,21 @@ import static org.junit.Assert.*;
  */
 public class SsdbClientTest extends BaseTest {
 
-    ////////////////////////////////////////////////////////////////
+    @Test
+    public void testReconnection() throws InterruptedException {
+        ConsistentHashSharding sharding = (ConsistentHashSharding) ssdbClient.getSharding();
+        sharding.setSpofStrategy(SPOFStrategy.PreserveKeySpaceStrategy);
+
+        for (int i = 0; i < 100; i++) {
+            try {
+                System.out.println(ssdbClient.qsize("ConnectionPing"));
+            } catch (Exception e) {
+                System.out.println("error");
+            }
+
+            Thread.sleep(5000);
+        }
+    }
 
     @Test
     public void testSendRequest() throws Exception {
