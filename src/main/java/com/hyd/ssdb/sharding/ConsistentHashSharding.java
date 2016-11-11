@@ -29,7 +29,7 @@ public class ConsistentHashSharding extends Sharding {
     /**
      * 单点故障处理策略，参考 {@link SPOFStrategy}
      */
-    private SPOFStrategy spofStrategy = SPOFStrategy.AutoExpandStrategy;
+    private SPOFStrategy spofStrategy = SPOFStrategy.PreserveKeySpaceStrategy;
 
     public ConsistentHashSharding(Cluster cluster) {
         super(cluster);
