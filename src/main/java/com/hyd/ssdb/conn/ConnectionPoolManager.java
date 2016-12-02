@@ -79,7 +79,7 @@ public class ConnectionPoolManager {
                 // 包括key策略，不再尝试切换Cluster
                 if (sharding instanceof ConsistentHashSharding) {
                     if (((ConsistentHashSharding) sharding).getSpofStrategy() == SPOFStrategy.PreserveKeySpaceStrategy) {
-                        retry = false;
+                        throw e;
                     }
                 }
             } catch (SsdbNoClusterAvailableException e) {  // 无法再继续尝试切换 Cluster
